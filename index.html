@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>misc-prjs · Téléchargements</title>
+<meta name="theme-color" content="#0d0b1f">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chakra+Petch:wght@500;600&display=swap">
+<style>
+/* Layout: narrow single column, one row per project */
+:root{
+  --space:#0d0b1f; --panel:#17132f; --line:#2a2452; --ink:#efeaff; --dim:#8a84b3; --amber:#ffb347;
+  --display:"Silkscreen", ui-monospace, "Courier New", monospace;
+  --body:"Chakra Petch", system-ui, sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--space);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+main{max-width:640px;margin:0 auto;padding:40px max(16px, env(safe-area-inset-left,0px)) 48px}
+h1{font-family:var(--display);font-size:28px;line-height:1.1;margin:0 0 6px;color:var(--amber)}
+.lead{color:var(--dim);margin:0 0 32px}
+.proj{display:grid;grid-template-columns:72px 1fr;gap:16px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.proj img{width:72px;height:72px;border-radius:16px}
+.proj h2{font-family:var(--display);font-size:18px;margin:2px 0 4px}
+.proj p{margin:0 0 14px;color:var(--dim);font-size:15px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font-family:var(--display);font-size:13px;letter-spacing:.06em;text-decoration:none;border-radius:6px;padding:10px 14px;display:inline-block}
+.btn.primary{background:var(--amber);color:var(--space)}
+.btn.ghost{border:1px solid var(--line);color:var(--ink)}
+.btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.note{font-size:13px;color:var(--dim);margin:14px 0 0}
+footer{margin-top:40px;font-size:13px;color:var(--dim)}
+@media (max-width:420px){.proj{grid-template-columns:1fr}.proj img{width:56px;height:56px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>misc-prjs</h1>
+  <p class="lead">Les apps des petits projets de l'organisation, prêtes à installer.</p>
+
+  <section class="proj" id="garde-orbitale">
+    <img src="garde-orbitale/icon-192.png" alt="">
+    <div>
+      <h2>Garde Orbitale</h2>
+      <p>Mini jeu de tir spatial façon Space Invaders. Glisse le doigt pour piloter, le canon tire tout seul.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/misc-prjs/misc-releases/releases/download/garde-orbitale/garde-orbitale.apk">APK Android</a>
+        <a class="btn ghost" href="garde-orbitale/">Version web</a>
+      </div>
+      <p class="note">APK : autorise l'installation hors Play Store. Version web : ouvre-la dans Chrome puis ⋮ → Installer l'application.</p>
+    </div>
+  </section>
+
+  <footer>Projets perso, sans garantie.</footer>
+</main>
+</body>
+</html>

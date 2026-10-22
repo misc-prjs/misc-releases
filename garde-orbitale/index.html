@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0b1f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}*,*::before,*::after{box-sizing:inherit}body{margin:0}[hidden]{display:none!important}</style>
+<title>Garde Orbitale</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chakra+Petch:wght@500;600&display=swap">
+<style>
+/* Layout: one full-height play field, slim HUD on top, overlay card for start / game over */
+:root{
+  --space:#0d0b1f; --space-2:#1a1638; --ship:#ffb347; --foe:#8fd3ff;
+  --foe-2:#c79bff; --hot:#ff5e6c; --ink:#efeaff; --dim:#8a84b3;
+  --display:"Silkscreen", ui-monospace, "Courier New", monospace;
+  --body:"Chakra Petch", system-ui, sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;min-height:100%;background:var(--space);color:var(--ink)}
+body{font-family:var(--body);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.wrap{height:100%;display:flex;flex-direction:column;
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:10px 12px;box-sizing:border-box;gap:8px;max-width:520px;margin:0 auto}
+.hud{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--display);font-size:13px;letter-spacing:.06em;color:var(--dim)}
+.hud b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.lives{color:var(--ship);letter-spacing:.2em}
+.field{position:relative;flex:1;min-height:340px;border-radius:10px;overflow:hidden;background:radial-gradient(120% 80% at 50% 110%, var(--space-2), var(--space) 70%);box-shadow:inset 0 0 0 1px #2a2452}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,11,31,.72);padding:20px}
+.card{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;max-width:300px}
+.card h1{font-family:var(--display);font-size:32px;line-height:1.05;margin:0;color:var(--ship);text-wrap:balance;text-shadow:0 0 18px rgba(255,179,71,.35)}
+.card p{margin:0;color:var(--dim);font-size:15px;line-height:1.45}
+.card .big{font-family:var(--display);font-size:22px;color:var(--ink)}
+button{font-family:var(--display);font-size:16px;letter-spacing:.08em;background:var(--ship);color:var(--space);border:0;border-radius:6px;padding:14px 26px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--foe);outline-offset:3px}
+.scoreBtn{font:inherit;letter-spacing:inherit;color:inherit;background:transparent;border:1px solid #3a3370;border-radius:6px;padding:5px 9px;margin:-6px 0 -6px -9px;display:inline-flex;gap:6px;align-items:baseline}
+.scoreBtn .tag{font-size:10px;color:var(--ship)}
+.board{z-index:2;background:rgba(13,11,31,.9)}
+.board .card{max-width:340px;width:100%;gap:16px}
+.board h2{font-family:var(--display);font-size:22px;margin:0;color:var(--ship)}
+.board ol{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:2px;counter-reset:rk}
+.board li{display:grid;grid-template-columns:2.2em 1fr auto;gap:10px;align-items:baseline;padding:7px 10px;border-radius:5px;font-variant-numeric:tabular-nums;counter-increment:rk;text-align:left;font-size:14px;color:var(--dim)}
+.board li::before{content:counter(rk);font-family:var(--display);color:var(--dim)}
+.board li b{font-family:var(--display);font-size:16px;color:var(--ink);font-weight:700}
+.board li:first-child b,.board li:first-child::before{color:var(--ship)}
+.board li.new{background:rgba(255,179,71,.14);box-shadow:inset 0 0 0 1px rgba(255,179,71,.45)}
+.board .empty{color:var(--dim);font-size:15px;margin:0}
+.board .paused{font-family:var(--display);font-size:11px;color:var(--foe);letter-spacing:.08em;margin:0}
+.hint{font-size:12px;color:var(--dim);text-align:center;font-family:var(--display);letter-spacing:.05em}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <button class="scoreBtn" id="scoreBtn" type="button" aria-label="Voir les 10 meilleurs scores">SCORE <b id="score">0</b> <span class="tag">TOP</span></button>
+    <span>VAGUE <b id="wave">1</b></span>
+    <span class="lives" id="lives">▲▲▲</span>
+  </div>
+  <div class="field" id="field">
+    <canvas id="c"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="card">
+        <h1 id="ovTitle">GARDE ORBITALE</h1>
+        <p id="ovText">Glisse ton doigt pour piloter. Le canon tire tout seul. Ne laisse pas la flotte atteindre le sol.</p>
+        <button id="startBtn" type="button">JOUER</button>
+        <p id="best"></p>
+      </div>
+    </div>
+    <div class="overlay board" id="board" hidden>
+      <div class="card">
+        <h2>TOP 10</h2>
+        <p class="paused" id="pausedTag" hidden>PARTIE EN PAUSE</p>
+        <ol id="boardList"></ol>
+        <p class="empty" id="boardEmpty">Aucun score pour l'instant. Termine une partie pour entrer au classement.</p>
+        <button id="closeBoard" type="button">FERMER</button>
+      </div>
+    </div>
+  </div>
+  <div class="hint">Glisser pour bouger · clavier ← → aussi</div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const field = document.getElementById('field');
+  const $ = id => document.getElementById(id);
+  const css = getComputedStyle(document.documentElement);
+  const C = k => css.getPropertyValue(k).trim();
+  const COL = { ship:C('--ship'), foe:C('--foe'), foe2:C('--foe-2'), hot:C('--hot'), ink:C('--ink') };
+
+  let W=0,H=0,dpr=1, stars=[];
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio||1, 2);
+    const r = field.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = W*dpr; cv.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    stars = Array.from({length:50},()=>({x:Math.random()*W,y:Math.random()*H,s:Math.random()*1.5+.3,v:Math.random()*12+4}));
+    if (ship){ ship.y = H-34; ship.x=Math.min(ship.x,W-20); ship.tx=Math.min(ship.tx,W-20); }
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(field);
+
+  // Top 10 scores, kept on this device
+  let scores = [], lastEntry = null, paused = false;
+  try { scores = JSON.parse(localStorage.getItem('go-scores')) || [] } catch(e){ scores = [] }
+  if (!Array.isArray(scores)) scores = [];
+  if (!scores.length){
+    let old = 0; try { old = +localStorage.getItem('go-best') || 0 } catch(e){}
+    if (old) scores = [{s:old, w:0, d:0}];
+  }
+  const saveScores = () => { try { localStorage.setItem('go-scores', JSON.stringify(scores)) } catch(e){} };
+  const showBest = () => $('best').textContent = scores.length ? 'Record : ' + scores[0].s + ' · touche SCORE pour le top 10' : '';
+  showBest();
+
+  function fmtDate(t){
+    if(!t) return '—';
+    const d = new Date(t);
+    return d.toLocaleDateString('fr-CA',{day:'numeric',month:'short'});
+  }
+  function openBoard(){
+    if (running){ paused = true; $('pausedTag').hidden = false; } else $('pausedTag').hidden = true;
+    const ol = $('boardList'); ol.innerHTML = '';
+    for (const e of scores){
+      const li = document.createElement('li');
+      if (e === lastEntry) li.className = 'new';
+      li.innerHTML = '<b>' + e.s + '</b><span>' + (e.w ? 'vague ' + e.w + ' · ' : '') + fmtDate(e.d) + '</span>';
+      // grid: rank (::before) | score | details
+      ol.appendChild(li);
+    }
+    $('boardEmpty').hidden = scores.length > 0;
+    $('board').hidden = false; $('closeBoard').focus();
+  }
+  function closeBoard(){
+    $('board').hidden = true;
+    if (paused){ paused = false; last = performance.now(); }
+  }
+  $('scoreBtn').addEventListener('click', openBoard);
+  $('closeBoard').addEventListener('click', closeBoard);
+
+  // Pixel sprites (two animation frames)
+  const FOE = [
+    ["00100100","00011000","00111100","01011010","11111111","10111101","10100101","00100100"],
+    ["00100100","10011001","10111101","11011011","11111111","00111100","01000010","10000001"]
+  ];
+  function drawSprite(rows,x,y,size,color){
+    ctx.fillStyle=color; const p=size/8;
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++) if(rows[r][c]==='1') ctx.fillRect(x+c*p,y+r*p,p+.3,p+.3);
+  }
+
+  let ship, foes, shots, bombs, sparks=[], dir, speed, score, lives, wave, running=false, fireT=0, frame=0, animT=0, inv=0, keys={};
+
+  function newWave(){
+    const cols=6, rows=4;
+    const size = Math.min(30, (W-40)/(cols*1.6));
+    const gap = size*.6;
+    const total = cols*size + (cols-1)*gap;
+    const x0 = (W-total)/2;
+    foes=[];
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)
+      foes.push({x:x0+c*(size+gap), y:40+r*(size+gap*.8), s:size, row:r, alive:true});
+    dir=1; speed = 22 + wave*8;
+    bombs=[]; shots=[];
+  }
+
+  function start(){
+    resize();
+    score=0; lives=3; wave=1; inv=0;
+    ship={x:W/2, y:H-34, w:34, h:18, tx:W/2};
+    sparks=[]; newWave(); hud();
+    $('overlay').hidden=true; running=true;
+  }
+
+  function hud(){
+    $('score').textContent=score; $('wave').textContent=wave;
+    $('lives').textContent='▲'.repeat(Math.max(lives,0));
+  }
+
+  function end(){
+    running=false;
+    lastEntry = null;
+    let rank = 0;
+    if (score > 0){
+      const entry = {s:score, w:wave, d:Date.now()};
+      scores.push(entry); scores.sort((a,b)=>b.s-a.s); scores = scores.slice(0,10);
+      rank = scores.indexOf(entry) + 1;
+      if (rank) lastEntry = entry;
+      saveScores();
+    }
+    $('ovTitle').textContent='FIN DE MISSION';
+    $('ovText').innerHTML='<span class="big">'+score+' pts</span><br>Vague '+wave+' atteinte'+(rank ? '<br>'+(rank===1?'Nouveau record !':rank+'<sup>e</sup> au top 10') : '');
+    $('startBtn').textContent='REJOUER';
+    showBest(); $('overlay').hidden=false; $('startBtn').focus();
+  }
+
+  function burst(x,y,color,n=10){
+    for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=40+Math.random()*120;
+      sparks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:.5,color});}
+  }
+
+  // Input: drag anywhere on the field
+  function setTarget(e){ if(!ship) return; const r=field.getBoundingClientRect(); ship.tx = Math.max(20,Math.min(W-20,e.clientX-r.left)); }
+  field.addEventListener('pointerdown',e=>{ if(running && !paused && e.target===cv){ setTarget(e); field.setPointerCapture(e.pointerId);} });
+  field.addEventListener('pointermove',e=>{ if(running && !paused && (e.buttons||e.pointerType!=='mouse')) setTarget(e); });
+  addEventListener('keydown',e=>{ keys[e.key]=true; if(e.key==='Escape' && !$('board').hidden){ closeBoard(); return; } if(!$('board').hidden) return; if(!running && (e.key==='Enter'||e.key===' ') && !$('overlay').hidden){ e.preventDefault(); start(); } });
+  addEventListener('keyup',e=>keys[e.key]=false);
+  $('startBtn').addEventListener('click',start);
+  addEventListener('resize',resize);
+
+  function update(dt){
+    // stars
+    for(const s of stars){ s.y+=s.v*dt; if(s.y>H){s.y=0;s.x=Math.random()*W;} }
+    for(const p of sparks){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.t-=dt; }
+    sparks=sparks.filter(p=>p.t>0);
+    if(!running||paused) return;
+
+    if(keys.ArrowLeft) ship.tx=Math.max(20,ship.tx-320*dt);
+    if(keys.ArrowRight) ship.tx=Math.min(W-20,ship.tx+320*dt);
+    ship.x += (ship.tx-ship.x)*Math.min(1,dt*14);
+    if(inv>0) inv-=dt;
+
+    // auto fire
+    fireT-=dt;
+    if(fireT<=0){ shots.push({x:ship.x,y:ship.y-12}); fireT=.38; }
+    for(const s of shots) s.y-=520*dt;
+    shots=shots.filter(s=>s.y>-10);
+
+    // fleet movement
+    const alive=foes.filter(f=>f.alive);
+    const boost = 1 + (1 - alive.length/foes.length)*1.6;
+    let minX=Infinity,maxX=-Infinity,maxY=0;
+    for(const f of alive){ f.x+=dir*speed*boost*dt; minX=Math.min(minX,f.x); maxX=Math.max(maxX,f.x+f.s); maxY=Math.max(maxY,f.y+f.s); }
+    if(maxX>W-8 || minX<8){ dir*=-1; for(const f of alive){ f.y+=14; f.x+=dir*4; } }
+    if(maxY>=ship.y-10){ lives=0; hud(); burst(ship.x,ship.y,COL.ship,24); end(); return; }
+
+    // enemy fire
+    if(alive.length && Math.random() < dt*(0.9+wave*0.35)){
+      const f=alive[Math.random()*alive.length|0];
+      bombs.push({x:f.x+f.s/2,y:f.y+f.s});
+    }
+    for(const b of bombs) b.y+=(170+wave*15)*dt;
+    bombs=bombs.filter(b=>b.y<H+10);
+
+    // collisions: shots vs foes
+    for(const s of shots){
+      for(const f of alive){
+        if(f.alive && s.x>f.x && s.x<f.x+f.s && s.y>f.y && s.y<f.y+f.s){
+          f.alive=false; s.y=-99; score+=10*(4-f.row);
+          burst(f.x+f.s/2,f.y+f.s/2,f.row<2?COL.foe2:COL.foe); hud(); break;
+        }
+      }
+    }
+    // bombs vs ship
+    if(inv<=0) for(const b of bombs){
+      if(Math.abs(b.x-ship.x)<ship.w/2 && b.y>ship.y-ship.h/2 && b.y<ship.y+ship.h/2){
+        b.y=H+99; lives--; inv=1.5; burst(ship.x,ship.y,COL.ship,18); hud();
+        if(navigator.vibrate) try{navigator.vibrate(80)}catch(e){}
+        if(lives<=0){ end(); return; }
+        break;
+      }
+    }
+    if(!foes.some(f=>f.alive)){ wave++; score+=50; hud(); newWave(); }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(const s of stars){ ctx.fillStyle=`rgba(239,234,255,${.25+s.s*.3})`; ctx.fillRect(s.x,s.y,s.s,s.s); }
+    // ground line
+    ctx.fillStyle='rgba(255,179,71,.18)'; ctx.fillRect(0,H-12,W,1);
+
+    if(foes){
+      const fr = (animT|0)%2;
+      for(const f of foes) if(f.alive) drawSprite(FOE[fr],f.x,f.y,f.s,f.row<2?COL.foe2:COL.foe);
+    }
+    if(shots){ ctx.fillStyle=COL.ship; for(const s of shots) ctx.fillRect(s.x-1.5,s.y-8,3,10); }
+    if(bombs){ ctx.fillStyle=COL.hot; for(const b of bombs){ ctx.fillRect(b.x-2,b.y-6,4,8); } }
+    for(const p of sparks){ ctx.globalAlpha=Math.max(p.t*2,0); ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,3,3); }
+    ctx.globalAlpha=1;
+
+    if(ship && running && !(inv>0 && (frame>>2)%2)){
+      const {x,y}=ship;
+      ctx.fillStyle=COL.ship;
+      ctx.beginPath(); ctx.moveTo(x,y-12); ctx.lineTo(x+17,y+8); ctx.lineTo(x-17,y+8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=COL.hot; ctx.fillRect(x-4,y+8,8,3+Math.random()*4);
+    }
+  }
+
+  let last=performance.now(), errShown=false;
+  function step(){
+    const t=performance.now();
+    const dt=Math.min((t-last)/1000,.05); last=t; frame++; animT+=dt*2.5;
+    try{
+      if(!W||!H) resize();
+      update(dt); draw();
+    }catch(err){
+      if(!errShown){ errShown=true; $('ovTitle').textContent='ERREUR'; $('ovText').textContent=String(err&&err.message||err); $('overlay').hidden=false; running=false; }
+    }
+  }
+  // rAF when available, plus a timer fallback for webviews that pause rAF
+  function loop(){ step(); requestAnimationFrame(loop); }
+  setInterval(()=>{ if(performance.now()-last>40) step(); }, 16);
+  resize(); requestAnimationFrame(loop); step();
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>
