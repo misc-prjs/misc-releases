@@ -1,0 +1,40 @@
+name: Publier les releases
+on:
+  push:
+    branches: [main]
+    paths: ['dist/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Une release par dossier de dist/ (même tag, fichiers remplacés)
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs'), path = require('path');
+            const {owner, repo} = context.repo;
+            for (const proj of fs.readdirSync('dist')) {
+              const dir = path.join('dist', proj);
+              if (!fs.statSync(dir).isDirectory()) continue;
+              let rel;
+              try {
+                rel = (await github.rest.repos.getReleaseByTag({owner, repo, tag: proj})).data;
+              } catch (e) {
+                if (e.status !== 404) throw e;
+                rel = (await github.rest.repos.createRelease({owner, repo, tag_name: proj, name: proj,
+                  body: 'Dernière version de ' + proj + ' (mise à jour en continu).', target_commitish: context.sha})).data;
+              }
+              const assets = (await github.rest.repos.listReleaseAssets({owner, repo, release_id: rel.id})).data;
+              for (const file of fs.readdirSync(dir)) {
+                const old = assets.find(a => a.name === file);
+                if (old) await github.rest.repos.deleteReleaseAsset({owner, repo, asset_id: old.id});
+                await github.rest.repos.uploadReleaseAsset({owner, repo, release_id: rel.id, name: file,
+                  data: fs.readFileSync(path.join(dir, file)),
+                  headers: {'content-type': 'application/octet-stream'}});
+                core.info(`${proj}: ${file} publié`);
+              }
+            }

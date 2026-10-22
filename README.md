@@ -6,6 +6,8 @@ Page d'accueil : https://misc-prjs.github.io/misc-releases/
 
 ## Fonctionnement
 
+- Déposer les fichiers dans `dist/<projet>/` : à chaque push, l'action « Publier les releases » met à jour la release `<projet>` (même tag, fichiers remplacés).
+
 - **Une release par projet**, nommée comme le projet et mise à jour au même endroit (pas d'historique des versions). Le lien de téléchargement reste donc fixe :
   `https://github.com/misc-prjs/misc-releases/releases/download/<projet>/<fichier>`
 - **Versions web** servies par GitHub Pages dans un dossier par projet : `https://misc-prjs.github.io/misc-releases/<projet>/`
