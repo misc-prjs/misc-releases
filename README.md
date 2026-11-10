@@ -18,3 +18,4 @@ Page d'accueil : https://misc-prjs.github.io/misc-releases/
 |---|---|---|
 | Garde Orbitale | [garde-orbitale.apk](https://github.com/misc-prjs/misc-releases/releases/download/garde-orbitale/garde-orbitale.apk) | [Jouer / installer](https://misc-prjs.github.io/misc-releases/garde-orbitale/) |
 | Mate les échecs | [mate-echecs.apk](https://github.com/misc-prjs/misc-releases/releases/download/mate-echecs/mate-echecs.apk) | [Jouer / installer](https://misc-prjs.github.io/misc-releases/mate-echecs/) |
+| Platitune | [platitune.apk](https://github.com/misc-prjs/misc-releases/releases/download/platitune/platitune.apk) | — |
